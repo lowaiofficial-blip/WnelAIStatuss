@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Header } from './components/Header';
+import { StatusBanner } from './components/StatusBanner';
 import { OverallStatusBanner } from './components/OverallStatusBanner';
 import { ServicesList } from './components/ServicesList';
 import { IncidentsSection } from './components/IncidentsSection';
@@ -14,6 +15,15 @@ export default function App() {
   const [isChecking, setIsChecking] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
+
+  // Calculate average latency across all active services
+  const averageLatency = useMemo(() => {
+    if (!data?.services || data.services.length === 0) return 0;
+    const latencies = data.services.map((s) => s.latencyMs || 0).filter((l) => l > 0);
+    if (latencies.length === 0) return 0;
+    const sum = latencies.reduce((acc, curr) => acc + curr, 0);
+    return Math.round(sum / latencies.length);
+  }, [data]);
 
   // Fetch real status snapshot
   const fetchStatus = useCallback(async (silent = false) => {
@@ -83,26 +93,30 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50/50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col font-sans transition-colors">
+    <div className="min-h-screen bg-zinc-50/60 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col font-sans transition-colors duration-200">
       
-      {/* Clean Minimalist Header with Admin mode */}
+      {/* Clean Minimalist Header with Live ping & Theme switcher */}
       <Header
         lastUpdated={data?.lastUpdated || new Date().toISOString()}
         isChecking={isChecking}
         onCheckNow={handleCheckNow}
         onOpenAdmin={() => setIsAdminOpen(true)}
+        averageLatency={averageLatency}
       />
 
       {/* Main Content Area */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full space-y-6 sm:space-y-8 flex-1">
         
+        {/* GitHub Engineering Status Illustration Banner */}
+        <StatusBanner />
+
         {/* Error notification if connection issue */}
         {error && (
-          <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center justify-between">
+          <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-medium flex items-center justify-between">
             <span>{error}</span>
             <button
               onClick={() => fetchStatus()}
-              className="underline font-semibold hover:text-rose-900 cursor-pointer"
+              className="underline font-semibold hover:text-rose-900 dark:hover:text-rose-200 cursor-pointer"
             >
               Tekrar Dene
             </button>
@@ -123,10 +137,11 @@ export default function App() {
           <ScheduledMaintenanceSection maintenance={data.scheduledMaintenance} />
         )}
 
-        {/* GitHub Status Style Services List (Uptime Bars, Pills, Question Mark Tooltips) */}
+        {/* GitHub Status Style Services List (Uptime Bars, Pills, Live Latency, Tooltips) */}
         {data && (
           <ServicesList
             services={data.services}
+            isChecking={isChecking}
           />
         )}
 
@@ -157,11 +172,11 @@ export default function App() {
               WnelAI Status
             </span>
             <span>•</span>
-            <span>GitHub Status Formatı Uptime İzleme</span>
+            <span>GitHub Status Formatı Uptime & Ping İzleme</span>
           </div>
 
-          <p className="text-zinc-500 text-[11px]">
-            Durum bilgileri anlık olarak izlenmektedir.
+          <p className="text-zinc-500 dark:text-zinc-400 text-[11px]">
+            Durum ve gecikme bilgileri anlık olarak izlenmektedir.
           </p>
         </div>
       </footer>

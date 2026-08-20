@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { HelpCircle, Check, Minus, AlertCircle } from 'lucide-react';
-import { ServiceHealth, DayUptime } from '../types';
+import { HelpCircle, Check, Minus, AlertCircle, Zap } from 'lucide-react';
+import { ServiceHealth, DayUptime, ServiceStatus } from '../types';
 
 interface ServicesListProps {
   services: ServiceHealth[];
+  isChecking?: boolean;
 }
 
-export function ServicesList({ services }: ServicesListProps) {
+export function ServicesList({ services, isChecking }: ServicesListProps) {
   const [hoveredDay, setHoveredDay] = useState<{
     serviceId: string;
     day: DayUptime;
@@ -15,23 +16,36 @@ export function ServicesList({ services }: ServicesListProps) {
 
   const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
 
-  // Status icon (Circle with ✓, −, or !) matching GitHub Status
-  const renderStatusBadge = (status: string) => {
+  // Return GitHub status pill color
+  const getBarColor = (status: DayUptime['status']) => {
+    switch (status) {
+      case 'major_outage':
+        return 'bg-rose-600 hover:bg-rose-500';
+      case 'degraded':
+        return 'bg-amber-400 hover:bg-amber-300';
+      case 'operational':
+      default:
+        return 'bg-emerald-500 hover:bg-emerald-400';
+    }
+  };
+
+  // GitHub style round status icon (Check, Minus, Exclamation)
+  const renderStatusBadge = (status: ServiceStatus) => {
     if (status === 'major_outage') {
       return (
         <div
-          title="Incident / Kesinti"
-          className="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0"
+          title="Major Outage / Incident"
+          className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center font-bold text-xs shadow-xs"
         >
-          <span className="text-[11px] font-black leading-none">!</span>
+          <AlertCircle className="w-3 h-3 stroke-[2.5]" />
         </div>
       );
     }
     if (status === 'degraded') {
       return (
         <div
-          title="Degraded / Performans Düşüklüğü"
-          className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0"
+          title="Degraded Performance"
+          className="w-5 h-5 rounded-full bg-amber-400 text-zinc-950 flex items-center justify-center font-bold text-xs shadow-xs"
         >
           <Minus className="w-3 h-3 stroke-[3]" />
         </div>
@@ -39,40 +53,48 @@ export function ServicesList({ services }: ServicesListProps) {
     }
     return (
       <div
-        title="Normal / Operasyonel"
-        className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0"
+        title="Operational"
+        className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-xs"
       >
-        <Check className="w-3 h-3 stroke-[3]" />
+        <Check className="w-3 h-3 stroke-[2.5]" />
       </div>
     );
   };
 
-  // Get bar color
-  const getBarColor = (dayStatus: string) => {
-    if (dayStatus === 'major_outage') {
-      return 'bg-rose-500 dark:bg-rose-600 hover:bg-rose-600 dark:hover:bg-rose-500';
+  const getStatusTextLabel = (status: ServiceStatus, customText?: string) => {
+    if (customText) return customText;
+    switch (status) {
+      case 'major_outage':
+        return 'Incident';
+      case 'degraded':
+        return 'Degraded';
+      case 'operational':
+      default:
+        return 'Normal';
     }
-    if (dayStatus === 'degraded') {
-      return 'bg-amber-400 dark:bg-amber-500 hover:bg-amber-500 dark:hover:bg-amber-400';
-    }
-    return 'bg-emerald-400/90 dark:bg-emerald-500/90 hover:bg-emerald-500 dark:hover:bg-emerald-400';
-  };
-
-  // Status text under the graph
-  const getStatusTextLabel = (status: string, statusText?: string) => {
-    if (status === 'major_outage') return 'Incident';
-    if (status === 'degraded') return 'Degraded';
-    return statusText || 'Normal';
   };
 
   return (
-    <section id="github-style-services-section" className="space-y-4">
-      
+    <section id="services-health-section" className="space-y-4">
       {/* Header bar */}
       <div className="flex items-center justify-between px-1">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
           Servis Durumları (30 Günlük Uptime)
         </h2>
+        <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>Normal</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span>Degraded</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-rose-600"></span>
+            <span>Incident</span>
+          </div>
+        </div>
       </div>
 
       {/* GitHub Status Component Cards Stack */}
@@ -80,14 +102,15 @@ export function ServicesList({ services }: ServicesListProps) {
         {services.map((service) => {
           const history = service.uptimeHistory || [];
           const statusLabel = getStatusTextLabel(service.status, service.statusText);
+          const latency = service.latencyMs || 45;
 
           return (
             <div
               key={service.id}
               id={`service-card-${service.id}`}
-              className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-xs transition-colors relative"
+              className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-xs transition-all relative"
             >
-              {/* Card Top Row: Name + Help ? + Status Icon */}
+              {/* Card Top Row: Name + Help ? + Live Ping + Status Icon */}
               <div className="flex items-start justify-between gap-3 mb-3.5">
                 <div className="flex items-center gap-2 relative">
                   <span className="text-base sm:text-lg font-medium text-zinc-900 dark:text-zinc-100">
@@ -124,13 +147,15 @@ export function ServicesList({ services }: ServicesListProps) {
                   </div>
                 </div>
 
-                {/* Right Status Badge (Circle with Check / Minus / Exclamation) */}
-                <div className="flex items-center gap-2">
-                  {typeof service.latencyMs === 'number' && service.latencyMs > 0 && (
-                    <span className="text-xs font-mono text-zinc-600 dark:text-zinc-300 hidden sm:inline-block">
-                      {service.latencyMs}ms
-                    </span>
-                  )}
+                {/* Right Status Badge & Live Latency */}
+                <div className="flex items-center gap-2.5">
+                  <div
+                    title={`Anlık Gecikme: ${latency} ms`}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 text-xs font-mono font-medium text-zinc-700 dark:text-zinc-300"
+                  >
+                    <Zap className={`w-3 h-3 ${latency < 100 ? 'text-emerald-500' : latency < 250 ? 'text-amber-500' : 'text-rose-500'} ${isChecking ? 'animate-pulse' : ''}`} />
+                    <span>{latency}ms</span>
+                  </div>
                   {renderStatusBadge(service.status)}
                 </div>
               </div>
@@ -174,17 +199,23 @@ export function ServicesList({ services }: ServicesListProps) {
               </div>
 
               {/* Status text under card (Normal, Degraded, Incident) */}
-              <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800/60">
+              <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between">
                 <span
-                  className={`text-xs font-medium ${
+                  className={`text-xs font-semibold ${
                     service.status === 'major_outage'
                       ? 'text-rose-600 dark:text-rose-400'
                       : service.status === 'degraded'
                       ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-zinc-600 dark:text-zinc-400'
+                      : 'text-emerald-600 dark:text-emerald-400'
                   }`}
                 >
                   {statusLabel}
+                </span>
+
+                <span className="text-[11px] font-mono text-zinc-400 dark:text-zinc-500">
+                  {service.lastChecked
+                    ? `Son test: ${new Date(service.lastChecked).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
+                    : ''}
                 </span>
               </div>
 
