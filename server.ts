@@ -31,7 +31,7 @@ interface ServiceInternalState extends ServiceHealth {
 }
 
 // Generate 30 days of historical uptime data
-function generate30DayHistory(serviceId: string, currentStatus: 'operational' | 'degraded' | 'major_outage'): DayUptime[] {
+function generate30DayHistory(serviceId: string, currentStatus: 'operational' | 'degraded' | 'major_outage' | 'critical'): DayUptime[] {
   const history: DayUptime[] = [];
   const now = new Date();
   const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
@@ -47,8 +47,18 @@ function generate30DayHistory(serviceId: string, currentStatus: 'operational' | 
         date: dateStr,
         dayLabel: `${dayLabel} (Bugün)`,
         status: currentStatus,
-        uptimePercent: currentStatus === 'operational' ? 100 : currentStatus === 'degraded' ? 97.4 : 88.0,
-        note: currentStatus === 'operational' ? 'Kesinti bildirilmedi' : currentStatus === 'degraded' ? 'Performans düşüklüğü / Model yoğunluğu' : 'Kesinti yaşandı',
+        uptimePercent: currentStatus === 'operational' ? 100 : currentStatus === 'degraded' ? 97.4 : currentStatus === 'major_outage' ? 88.0 : 64.0,
+        note: currentStatus === 'operational' ? 'Kesinti bildirilmedi' : currentStatus === 'degraded' ? 'Performans düşüklüğü / Model yoğunluğu' : currentStatus === 'major_outage' ? 'Kesinti yaşandı' : '🚨 Kritik Acil Durum / Model Servisi Çöktü',
+      });
+    } else if (serviceId === 'thinking_mode' && i === 1) {
+      // Yesterday critical/degraded for thinking mode
+      history.push({
+        date: dateStr,
+        dayLabel,
+        status: 'critical',
+        uptimePercent: 78.5,
+        incidentCount: 1,
+        note: 'Düşünen Mod model çökmesi ve timeout',
       });
     } else if (serviceId === 'thinking_mode' && (i === 4 || i === 12)) {
       // Past occasional degraded day for thinking mode
@@ -93,14 +103,14 @@ const servicesState: Map<string, ServiceInternalState> = new Map([
       name: 'Düşünen Mod',
       subtitle: 'Qwen 3 Coder',
       description: 'Qwen 2.5 Coder 32B modeline dayalı derin kod ve mantıksal muhakeme motoru.',
-      status: 'degraded',
-      statusText: 'Degraded',
+      status: 'critical',
+      statusText: 'Kritik Acil Durum',
       lastChecked: new Date().toISOString(),
-      consecutiveFailures: 0,
+      consecutiveFailures: 5,
       consecutiveSuccesses: 0,
       targetEndpoint: 'https://wnelai.onrender.com/api/chat (qwen/qwen-2.5-coder-32b-instruct)',
-      uptimePercent30d: 99.68,
-      uptimeHistory: generate30DayHistory('thinking_mode', 'degraded'),
+      uptimePercent30d: 95.12,
+      uptimeHistory: generate30DayHistory('thinking_mode', 'critical'),
       manualOverride: true,
     },
   ],
@@ -178,17 +188,18 @@ const servicesState: Map<string, ServiceInternalState> = new Map([
   ],
 ]);
 
-// Initial active incident for Thinking Mode reflecting the ongoing issue
+// Initial active emergency incident for Thinking Mode reflecting the severe breakdown
 let incidentsList: IncidentRecord[] = [
   {
-    id: `inc-thinking-mode`,
+    id: `inc-thinking-mode-critical`,
     serviceId: 'thinking_mode',
     serviceName: 'Düşünen Mod (Qwen 3 Coder)',
-    title: 'Düşünen Mod - "Model temporarily unavailable" Sorunu',
+    title: '🚨 ACİL DURUM: Düşünen Mod (Qwen 3 Coder) Tamamen Çöktü & Yanıt Vermiyor',
     status: 'investigating',
-    startedAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+    severity: 'critical',
+    startedAt: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
     summary:
-      'Düşünen Mod üzerinde özellikle uzun metin ve kod üretim isteklerinde "Model temporarily unavailable" hatası meydana gelmektedir. Ekiplerimiz sağlayıcı API ve model yönlendirmesi üzerinde çalışmaktadır.',
+      'Düşünen Mod (Qwen 2.5 Coder 32B) altyapısında model sağlayıcı ve mantıksal işlem motorunda tam blokaj ve çökme yaşanmaktadır. İstekler zaman aşımına uğramakta ve "Model temporarily unavailable" hatası ile reddedilmektedir. Teknik ekipler P0 Acil Müdahale sürecini yürütmektedir.',
   },
 ];
 
@@ -320,13 +331,21 @@ setInterval(() => {
 
 // Calculate overall system status
 function calculateOverallStatus(services: ServiceHealth[]): {
-  overallStatus: 'operational' | 'degraded' | 'outage';
+  overallStatus: 'operational' | 'degraded' | 'outage' | 'critical';
   overallStatusTitle: string;
   overallStatusSubtitle: string;
 } {
+  const hasCritical = services.some((s) => s.status === 'critical');
   const hasOutage = services.some((s) => s.status === 'major_outage');
   const hasDegraded = services.some((s) => s.status === 'degraded');
 
+  if (hasCritical) {
+    return {
+      overallStatus: 'critical',
+      overallStatusTitle: 'Kritik Sistem Acil Durumu ✕',
+      overallStatusSubtitle: 'Düşünen Mod (Qwen 3 Coder) altyapısında kritik çökme mevcut.',
+    };
+  }
   if (hasOutage) {
     return {
       overallStatus: 'outage',
@@ -427,7 +446,7 @@ app.post('/api/admin/service-status', requireAdminAuth, (req, res) => {
   }
 
   svc.status = status;
-  svc.statusText = statusText || (status === 'operational' ? 'Normal' : status === 'degraded' ? 'Degraded' : 'Incident');
+  svc.statusText = statusText || (status === 'operational' ? 'Normal' : status === 'degraded' ? 'Degraded' : status === 'major_outage' ? 'Incident' : 'Kritik Acil Durum');
   svc.manualOverride = true;
   svc.lastChecked = new Date().toISOString();
 
@@ -435,7 +454,7 @@ app.post('/api/admin/service-status', requireAdminAuth, (req, res) => {
   if (svc.uptimeHistory && svc.uptimeHistory.length > 0) {
     const todayBar = svc.uptimeHistory[svc.uptimeHistory.length - 1];
     todayBar.status = status;
-    todayBar.uptimePercent = status === 'operational' ? 100 : status === 'degraded' ? 97.4 : 85.0;
+    todayBar.uptimePercent = status === 'operational' ? 100 : status === 'degraded' ? 97.4 : status === 'major_outage' ? 85.0 : 64.0;
   }
 
   res.json({ success: true, service: svc, payload: getStatusPayload() });

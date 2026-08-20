@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HelpCircle, Check, Minus, AlertCircle, Zap } from 'lucide-react';
+import { HelpCircle, Check, Minus, AlertCircle, X, Zap } from 'lucide-react';
 import { ServiceHealth, DayUptime, ServiceStatus } from '../types';
 
 interface ServicesListProps {
@@ -19,6 +19,8 @@ export function ServicesList({ services, isChecking }: ServicesListProps) {
   // Return GitHub status pill color
   const getBarColor = (status: DayUptime['status']) => {
     switch (status) {
+      case 'critical':
+        return 'bg-purple-600 hover:bg-purple-500 shadow-xs shadow-purple-500/40';
       case 'major_outage':
         return 'bg-rose-600 hover:bg-rose-500';
       case 'degraded':
@@ -29,8 +31,18 @@ export function ServicesList({ services, isChecking }: ServicesListProps) {
     }
   };
 
-  // GitHub style round status icon (Check, Minus, Exclamation)
+  // GitHub style round status icon (Purple X, Rose Alert, Amber Minus, Emerald Check)
   const renderStatusBadge = (status: ServiceStatus) => {
+    if (status === 'critical') {
+      return (
+        <div
+          title="Kritik Acil Durum / Critical Outage"
+          className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-xs shadow-sm ring-2 ring-purple-400/50 animate-pulse"
+        >
+          <X className="w-3.5 h-3.5 stroke-[3]" />
+        </div>
+      );
+    }
     if (status === 'major_outage') {
       return (
         <div
@@ -64,6 +76,8 @@ export function ServicesList({ services, isChecking }: ServicesListProps) {
   const getStatusTextLabel = (status: ServiceStatus, customText?: string) => {
     if (customText) return customText;
     switch (status) {
+      case 'critical':
+        return 'Kritik Acil Durum';
       case 'major_outage':
         return 'Incident';
       case 'degraded':
@@ -77,11 +91,11 @@ export function ServicesList({ services, isChecking }: ServicesListProps) {
   return (
     <section id="services-health-section" className="space-y-4">
       {/* Header bar */}
-      <div className="flex items-center justify-between px-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
           Servis Durumları (30 Günlük Uptime)
         </h2>
-        <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+        <div className="flex items-center flex-wrap gap-2.5 sm:gap-3 text-xs text-zinc-500 dark:text-zinc-400">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
             <span>Normal</span>
@@ -94,6 +108,10 @@ export function ServicesList({ services, isChecking }: ServicesListProps) {
             <span className="w-2 h-2 rounded-full bg-rose-600"></span>
             <span>Incident</span>
           </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse"></span>
+            <span className="text-purple-600 dark:text-purple-400 font-semibold">Kritik (🟣✕)</span>
+          </div>
         </div>
       </div>
 
@@ -103,12 +121,17 @@ export function ServicesList({ services, isChecking }: ServicesListProps) {
           const history = service.uptimeHistory || [];
           const statusLabel = getStatusTextLabel(service.status, service.statusText);
           const latency = service.latencyMs || 45;
+          const isCritical = service.status === 'critical';
 
           return (
             <div
               key={service.id}
               id={`service-card-${service.id}`}
-              className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-xs transition-all relative"
+              className={`rounded-xl border p-5 shadow-xs transition-all relative ${
+                isCritical
+                  ? 'border-purple-300 dark:border-purple-800/80 bg-purple-50/20 dark:bg-purple-950/20 ring-1 ring-purple-500/20'
+                  : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900'
+              }`}
             >
               {/* Card Top Row: Name + Help ? + Live Ping + Status Icon */}
               <div className="flex items-start justify-between gap-3 mb-3.5">
@@ -153,7 +176,7 @@ export function ServicesList({ services, isChecking }: ServicesListProps) {
                     title={`Anlık Gecikme: ${latency} ms`}
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 text-xs font-mono font-medium text-zinc-700 dark:text-zinc-300"
                   >
-                    <Zap className={`w-3 h-3 ${latency < 100 ? 'text-emerald-500' : latency < 250 ? 'text-amber-500' : 'text-rose-500'} ${isChecking ? 'animate-pulse' : ''}`} />
+                    <Zap className={`w-3 h-3 ${isCritical ? 'text-purple-500' : latency < 100 ? 'text-emerald-500' : latency < 250 ? 'text-amber-500' : 'text-rose-500'} ${isChecking ? 'animate-pulse' : ''}`} />
                     <span>{latency}ms</span>
                   </div>
                   {renderStatusBadge(service.status)}
@@ -198,17 +221,20 @@ export function ServicesList({ services, isChecking }: ServicesListProps) {
                 <span className="shrink-0 text-[11px]">Today</span>
               </div>
 
-              {/* Status text under card (Normal, Degraded, Incident) */}
+              {/* Status text under card (Normal, Degraded, Incident, Kritik) */}
               <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between">
                 <span
-                  className={`text-xs font-semibold ${
-                    service.status === 'major_outage'
+                  className={`text-xs font-semibold flex items-center gap-1 ${
+                    service.status === 'critical'
+                      ? 'text-purple-600 dark:text-purple-400 font-bold'
+                      : service.status === 'major_outage'
                       ? 'text-rose-600 dark:text-rose-400'
                       : service.status === 'degraded'
                       ? 'text-amber-600 dark:text-amber-400'
                       : 'text-emerald-600 dark:text-emerald-400'
                   }`}
                 >
+                  {service.status === 'critical' && <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-ping" />}
                   {statusLabel}
                 </span>
 
@@ -239,7 +265,9 @@ export function ServicesList({ services, isChecking }: ServicesListProps) {
           <div className="flex items-center gap-1 text-[11px]">
             <span
               className={`w-1.5 h-1.5 rounded-full ${
-                hoveredDay.day.status === 'major_outage'
+                hoveredDay.day.status === 'critical'
+                  ? 'bg-purple-500 animate-pulse'
+                  : hoveredDay.day.status === 'major_outage'
                   ? 'bg-rose-500'
                   : hoveredDay.day.status === 'degraded'
                   ? 'bg-amber-400'
@@ -247,7 +275,9 @@ export function ServicesList({ services, isChecking }: ServicesListProps) {
               }`}
             />
             <span className="text-zinc-300">
-              {hoveredDay.day.status === 'major_outage'
+              {hoveredDay.day.status === 'critical'
+                ? 'Kritik Acil Durum / Çökme'
+                : hoveredDay.day.status === 'major_outage'
                 ? 'Incident (Kesinti)'
                 : hoveredDay.day.status === 'degraded'
                 ? 'Degraded (Performans Düşüklüğü)'
@@ -255,7 +285,7 @@ export function ServicesList({ services, isChecking }: ServicesListProps) {
             </span>
           </div>
           {hoveredDay.day.note && (
-            <div className="text-[10px] text-zinc-400 max-w-[180px] text-center">
+            <div className="text-[10px] text-zinc-400 max-w-[200px] text-center">
               {hoveredDay.day.note}
             </div>
           )}

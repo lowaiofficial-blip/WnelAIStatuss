@@ -1,9 +1,9 @@
-export type ServiceStatus = 'operational' | 'degraded' | 'major_outage';
+export type ServiceStatus = 'operational' | 'degraded' | 'major_outage' | 'critical';
 
 export interface DayUptime {
   date: string; // YYYY-MM-DD
   dayLabel: string; // e.g. "18 Ağu"
-  status: 'operational' | 'degraded' | 'major_outage';
+  status: 'operational' | 'degraded' | 'major_outage' | 'critical';
   uptimePercent: number;
   incidentCount?: number;
   note?: string;
@@ -30,6 +30,7 @@ export interface IncidentRecord {
   serviceName: string;
   title: string;
   status: 'investigating' | 'identified' | 'monitoring' | 'resolved';
+  severity?: 'critical' | 'major' | 'minor';
   startedAt: string; // ISO string
   resolvedAt?: string; // ISO string
   durationFormatted?: string;
@@ -46,7 +47,7 @@ export interface ScheduledMaintenanceRecord {
 }
 
 export interface SystemStatusResponse {
-  overallStatus: 'operational' | 'degraded' | 'outage';
+  overallStatus: 'operational' | 'degraded' | 'outage' | 'critical';
   overallStatusTitle: string;
   overallStatusSubtitle: string;
   lastUpdated: string;

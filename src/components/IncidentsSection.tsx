@@ -1,4 +1,4 @@
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 import { IncidentRecord } from '../types';
 
 interface IncidentsSectionProps {
@@ -29,7 +29,7 @@ export function IncidentsSection({
       {/* Current Incidents */}
       <section id="active-incidents-section" className="space-y-2.5">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 px-1">
-          Aktif Olaylar
+          Aktif Olaylar & Acil Durum Bildirimleri
         </h2>
 
         {activeIncidents.length === 0 ? (
@@ -40,29 +40,41 @@ export function IncidentsSection({
         ) : (
           <div className="space-y-3">
             {activeIncidents.map((incident) => {
-              const isDegraded = incident.summary.includes('Degraded') || incident.summary.includes('sarı') || incident.title.includes('temporarily unavailable');
+              const isCritical = incident.severity === 'critical' || incident.title.includes('ACİL') || incident.title.includes('Tamamen Çöktü');
+              const isDegraded = !isCritical && (incident.summary.includes('Degraded') || incident.summary.includes('sarı') || incident.title.includes('temporarily unavailable'));
+
               return (
                 <div
                   key={incident.id}
                   id={`active-incident-${incident.id}`}
-                  className={`rounded-xl border p-5 space-y-2 shadow-xs ${
-                    isDegraded
+                  className={`rounded-xl border p-5 space-y-2.5 shadow-xs transition-all ${
+                    isCritical
+                      ? 'border-purple-300 dark:border-purple-800/80 bg-purple-50/40 dark:bg-purple-950/30 ring-1 ring-purple-500/20'
+                      : isDegraded
                       ? 'border-amber-200 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20'
                       : 'border-rose-200 dark:border-rose-900/50 bg-rose-50/40 dark:bg-rose-950/20'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-start sm:items-center justify-between gap-2 flex-col sm:flex-row">
                     <div className="flex items-center gap-2">
-                      <AlertCircle
-                        className={`w-4 h-4 shrink-0 ${
-                          isDegraded
-                            ? 'text-amber-600 dark:text-amber-400'
-                            : 'text-rose-600 dark:text-rose-400'
-                        }`}
-                      />
+                      {isCritical ? (
+                        <div className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs animate-pulse">
+                          <XCircle className="w-3.5 h-3.5" />
+                        </div>
+                      ) : (
+                        <AlertCircle
+                          className={`w-4 h-4 shrink-0 ${
+                            isDegraded
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : 'text-rose-600 dark:text-rose-400'
+                          }`}
+                        />
+                      )}
                       <span
-                        className={`font-semibold text-sm ${
-                          isDegraded
+                        className={`font-bold text-sm ${
+                          isCritical
+                            ? 'text-purple-950 dark:text-purple-200'
+                            : isDegraded
                             ? 'text-amber-950 dark:text-amber-200'
                             : 'text-rose-900 dark:text-rose-200'
                         }`}
@@ -71,20 +83,25 @@ export function IncidentsSection({
                       </span>
                     </div>
                     <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        isDegraded
+                      className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                        isCritical
+                          ? 'bg-purple-600 text-white shadow-xs animate-pulse ring-2 ring-purple-300 dark:ring-purple-700'
+                          : isDegraded
                           ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
                           : 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300'
                       }`}
                     >
-                      İnceleniyor
+                      {isCritical ? 'Acil Durum (P0)' : 'İnceleniyor'}
                     </span>
                   </div>
-                  <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300">
+                  <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
                     {incident.summary}
                   </p>
-                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400 pt-1">
-                    Başlangıç: {formatDate(incident.startedAt)}
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400 pt-1 flex items-center justify-between">
+                    <span>Başlangıç: {formatDate(incident.startedAt)}</span>
+                    <span className="font-semibold text-purple-700 dark:text-purple-400">
+                      {incident.serviceName}
+                    </span>
                   </div>
                 </div>
               );

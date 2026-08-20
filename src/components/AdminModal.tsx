@@ -346,19 +346,19 @@ export function AdminModal({ isOpen, onClose, data, onDataUpdated }: AdminModalP
                       </div>
                     </div>
 
-                    {/* 3 Quick Buttons (Normal / Degraded / Outage) */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    {/* 4 Quick Buttons (Normal / Degraded / Outage / Kritik) */}
+                    <div className="flex items-center flex-wrap gap-1.5 shrink-0">
                       <button
                         onClick={() => handleSetServiceStatus(svc.id, 'operational', 'Normal')}
                         disabled={loadingAction === `svc-${svc.id}-operational`}
                         title="Normal / Çalışıyor olarak ayarla"
-                        className={`px-2.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                        className={`px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                           svc.status === 'operational'
                             ? 'bg-emerald-600 text-white shadow-xs'
                             : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:hover:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800/50'
                         }`}
                       >
-                        <Check className="w-3.5 h-3.5" />
+                        <Check className="w-3 h-3" />
                         <span>Normal</span>
                       </button>
 
@@ -366,13 +366,13 @@ export function AdminModal({ isOpen, onClose, data, onDataUpdated }: AdminModalP
                         onClick={() => handleSetServiceStatus(svc.id, 'degraded', 'Degraded')}
                         disabled={loadingAction === `svc-${svc.id}-degraded`}
                         title="Performans Düşüklüğü (Sarı) olarak ayarla"
-                        className={`px-2.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                        className={`px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                           svc.status === 'degraded'
                             ? 'bg-amber-500 text-zinc-950 shadow-xs'
                             : 'bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-400 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-800/50'
                         }`}
                       >
-                        <AlertTriangle className="w-3.5 h-3.5" />
+                        <AlertTriangle className="w-3 h-3" />
                         <span>Degraded</span>
                       </button>
 
@@ -380,14 +380,28 @@ export function AdminModal({ isOpen, onClose, data, onDataUpdated }: AdminModalP
                         onClick={() => handleSetServiceStatus(svc.id, 'major_outage', 'Incident')}
                         disabled={loadingAction === `svc-${svc.id}-major_outage`}
                         title="Kesinti (Kırmızı) olarak ayarla"
-                        className={`px-2.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                        className={`px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                           svc.status === 'major_outage'
                             ? 'bg-rose-600 text-white shadow-xs'
                             : 'bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-900/40 border border-rose-200 dark:border-rose-800/50'
                         }`}
                       >
-                        <AlertCircle className="w-3.5 h-3.5" />
+                        <AlertCircle className="w-3 h-3" />
                         <span>Incident</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleSetServiceStatus(svc.id, 'critical', 'Kritik Acil Durum')}
+                        disabled={loadingAction === `svc-${svc.id}-critical`}
+                        title="Kritik Acil Durum (Mor ✕) olarak ayarla"
+                        className={`px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                          svc.status === 'critical'
+                            ? 'bg-purple-600 text-white shadow-xs ring-2 ring-purple-400/50'
+                            : 'bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-400 dark:hover:bg-purple-900/40 border border-purple-200 dark:border-purple-800/50'
+                        }`}
+                      >
+                        <X className="w-3 h-3" />
+                        <span>Kritik (🟣✕)</span>
                       </button>
                     </div>
                   </div>
