@@ -1,0 +1,6 @@
+{
+  "name": "WnelAI Status",
+  "description": "WnelAI servisleri için 7/24 otomatik health check, anlık performans ve kesinti izleme sistemi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
