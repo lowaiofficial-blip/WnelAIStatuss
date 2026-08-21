@@ -83,14 +83,14 @@ const servicesState: Map<string, ServiceInternalState> = new Map([
     {
       id: 'thinking_mode',
       name: 'Düşünen Mod',
-      subtitle: 'DeepSeek-R1',
-      description: 'DeepSeek-R1 modeline dayalı derin kod ve mantıksal muhakeme motoru.',
+      subtitle: 'DeepSeek-R1 / Llama 70B',
+      description: 'Öncelikli Groq (Llama 70B), yedek OpenRouter (DeepSeek R1) veya Gemini üzerinden mantıksal motor.',
       status: 'operational',
       statusText: 'Normal',
       lastChecked: new Date().toISOString(),
       consecutiveFailures: 0,
       consecutiveSuccesses: 1,
-      targetEndpoint: 'https://wnelai.onrender.com/api/chat (deepseek/deepseek-r1)',
+      targetEndpoint: 'api.groq.com / openrouter.ai / generativelanguage.googleapis.com',
       uptimePercent30d: 100.0,
       uptimeHistory: generate30DayHistory('thinking_mode', 'operational'),
       manualOverride: false,
@@ -101,14 +101,14 @@ const servicesState: Map<string, ServiceInternalState> = new Map([
     {
       id: 'fast_mode',
       name: 'Hızlı Mod',
-      subtitle: 'Qwen Plus',
-      description: 'Hızlı metin tamamlama, sohbet ve anlık yanıt motoru.',
+      subtitle: 'Qwen Plus / Llama 8B',
+      description: 'Groq LPU (Llama 8B), OpenRouter veya Gemini üzerinden hızlı yanıt motoru.',
       status: 'operational',
       statusText: 'Normal',
       lastChecked: new Date().toISOString(),
       consecutiveFailures: 0,
       consecutiveSuccesses: 1,
-      targetEndpoint: 'https://wnelai.onrender.com/api/chat (qwen/qwen-plus)',
+      targetEndpoint: 'api.groq.com / openrouter.ai / generativelanguage.googleapis.com',
       uptimePercent30d: 100.0,
       uptimeHistory: generate30DayHistory('fast_mode', 'operational'),
       manualOverride: false,
@@ -136,15 +136,15 @@ const servicesState: Map<string, ServiceInternalState> = new Map([
     'authentication',
     {
       id: 'authentication',
-      name: 'Authentication',
-      subtitle: 'Firebase Gateway',
-      description: 'Kullanıcı giriş, yetkilendirme ve oturum doğrulama servisi.',
+      name: 'Firebase Gateway',
+      subtitle: 'Veritabanı & Giriş Sistemi',
+      description: 'Uygulamanın veritabanına ve kullanıcı giriş sistemine erişimini kontrol eder.',
       status: 'operational',
       statusText: 'Normal',
       lastChecked: new Date().toISOString(),
       consecutiveFailures: 0,
       consecutiveSuccesses: 1,
-      targetEndpoint: 'https://gen-lang-client-0825109257.firebaseapp.com/__/auth/handler',
+      targetEndpoint: 'https://firestore.googleapis.com/$discovery/rest?version=v1',
       uptimePercent30d: 100.0,
       uptimeHistory: generate30DayHistory('authentication', 'operational'),
       manualOverride: false,
@@ -154,15 +154,15 @@ const servicesState: Map<string, ServiceInternalState> = new Map([
     'ai_api',
     {
       id: 'ai_api',
-      name: 'AI API',
-      subtitle: 'Title & Proxy Router',
-      description: 'Başlık üretimi, sohbet proxy ve model yönlendirme API ağ geçidi.',
+      name: 'AI API Proxy Router',
+      subtitle: 'API Anahtar Kontrolü',
+      description: 'Sistemin kendi içindeki Groq, OpenRouter ve Gemini anahtarlarından aktif olanı belirler.',
       status: 'operational',
       statusText: 'Normal',
       lastChecked: new Date().toISOString(),
       consecutiveFailures: 0,
       consecutiveSuccesses: 1,
-      targetEndpoint: 'https://wnelai.onrender.com/api/generate-title',
+      targetEndpoint: 'Dahili API Key Kontrolü',
       uptimePercent30d: 99.85,
       uptimeHistory: generate30DayHistory('ai_api', 'operational'),
       manualOverride: false,
@@ -178,9 +178,9 @@ const activeMaintenance: ScheduledMaintenanceRecord | null = null;
 
 let lastCheckTime = new Date().toISOString();
 const CHECK_INTERVAL_SECONDS = 45;
-let autoProbeEnabled = true; // Enabled by default for fully automatic system monitoring
+let autoProbeEnabled = false; // Disabled by default because the main app sends webhooks
 
-const BASE_URL = 'https://wnelai.onrender.com';
+const BASE_URL = 'https://wnelai-84lo.onrender.com';
 const AUTH_URL = 'https://gen-lang-client-0825109257.firebaseapp.com/__/auth/handler';
 
 // Execute real multi-tier health checks
@@ -206,7 +206,7 @@ async function executeHealthProbes(): Promise<void> {
             messages: [{ role: 'user', content: 'ping' }],
             model: 'deepseek/deepseek-r1',
           }),
-          signal: AbortSignal.timeout(8000), // longer timeout for LLMs
+          signal: AbortSignal.timeout(15000), // longer timeout for LLMs
         });
         latency = Date.now() - probeStart;
         if (!quickRes.ok && quickRes.status >= 500) {
@@ -222,7 +222,7 @@ async function executeHealthProbes(): Promise<void> {
             messages: [{ role: 'user', content: 'ping' }],
             model: 'qwen/qwen-plus',
           }),
-          signal: AbortSignal.timeout(8000),
+          signal: AbortSignal.timeout(15000),
         });
         latency = Date.now() - probeStart;
         if (!res.ok && res.status >= 500) {
@@ -231,12 +231,12 @@ async function executeHealthProbes(): Promise<void> {
         }
       } else if (id === 'wnel_chat') {
         svc.targetEndpoint = `${BASE_URL}/`;
-        const res = await fetch(`${BASE_URL}/`, { signal: AbortSignal.timeout(5000) });
+        const res = await fetch(`${BASE_URL}/`, { signal: AbortSignal.timeout(15000) });
         latency = Date.now() - probeStart;
         if (!res.ok && res.status >= 500) isSuccess = false;
       } else if (id === 'authentication') {
         svc.targetEndpoint = AUTH_URL;
-        const res = await fetch(AUTH_URL, { signal: AbortSignal.timeout(5000) });
+        const res = await fetch(AUTH_URL, { signal: AbortSignal.timeout(15000) });
         latency = Date.now() - probeStart;
         if (res.status >= 500) isSuccess = false;
       } else if (id === 'ai_api') {
@@ -245,7 +245,7 @@ async function executeHealthProbes(): Promise<void> {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }),
-          signal: AbortSignal.timeout(5000),
+          signal: AbortSignal.timeout(15000),
         });
         latency = Date.now() - probeStart;
         if (!res.ok && res.status >= 500) isSuccess = false;
@@ -260,10 +260,6 @@ async function executeHealthProbes(): Promise<void> {
          isSuccess = false; // Actual connection error
       }
       
-      if (latency < 20 || latency > 5000) {
-        const jitter = Math.floor(Math.random() * 45) + 35;
-        latency = svc.status === 'operational' ? jitter : svc.status === 'degraded' ? jitter + 180 : jitter + 420;
-      }
     }
 
     // Ensure latency is always a sensible positive number
@@ -426,12 +422,12 @@ function mapServiceKeyToInternalId(key: string, name?: string): string {
   const cleanKey = key.toLowerCase().replace(/[^a-z0-9_]/g, '_');
   const cleanName = (name || '').toLowerCase();
 
-  // Match Düşünen Mod / DeepSeek-R1 / Qwen 3 Coder
-  if (cleanKey.includes('deepseek') || cleanKey.includes('thinking') || cleanName.includes('düşünen') || cleanName.includes('deepseek')) {
+  // Match Düşünen Mod / DeepSeek-R1 / Llama 70B
+  if (cleanKey.includes('deepseek') || cleanKey.includes('thinking') || cleanName.includes('düşünen') || cleanName.includes('deepseek') || cleanKey.includes('70b') || cleanName.includes('70b')) {
     return 'thinking_mode';
   }
-  // Match Hızlı Mod / Qwen Plus
-  if (cleanKey.includes('qwen_plus') || cleanKey.includes('fast') || cleanName.includes('hızlı') || cleanName.includes('qwen plus')) {
+  // Match Hızlı Mod / Qwen Plus / Llama 8B
+  if (cleanKey.includes('qwen_plus') || cleanKey.includes('fast') || cleanName.includes('hızlı') || cleanName.includes('qwen plus') || cleanKey.includes('8b') || cleanName.includes('8b')) {
     return 'fast_mode';
   }
   // Match Firebase / Auth / Gateway
