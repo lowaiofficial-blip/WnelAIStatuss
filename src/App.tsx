@@ -65,7 +65,7 @@ export default function App() {
     // Auto-poll status periodically
     const interval = setInterval(() => {
       fetchStatus(true);
-    }, 30000);
+    }, 10000); // 10 seconds for near real-time updates
     return () => clearInterval(interval);
   }, [fetchStatus]);
 
