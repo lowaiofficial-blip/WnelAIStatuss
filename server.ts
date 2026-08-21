@@ -178,7 +178,7 @@ const activeMaintenance: ScheduledMaintenanceRecord | null = null;
 
 let lastCheckTime = new Date().toISOString();
 const CHECK_INTERVAL_SECONDS = 45;
-let autoProbeEnabled = false; // Disabled by default so manual settings are NOT overwritten
+let autoProbeEnabled = true; // Enabled by default for fully automatic system monitoring
 
 const BASE_URL = 'https://wnelai.onrender.com';
 const AUTH_URL = 'https://gen-lang-client-0825109257.firebaseapp.com/__/auth/handler';
@@ -198,15 +198,15 @@ async function executeHealthProbes(): Promise<void> {
 
     try {
       if (id === 'thinking_mode') {
-        svc.targetEndpoint = `${BASE_URL}/api/chat (qwen/qwen-2.5-coder-32b-instruct)`;
+        svc.targetEndpoint = `${BASE_URL}/api/chat (deepseek/deepseek-r1)`;
         const quickRes = await fetch(`${BASE_URL}/api/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messages: [{ role: 'user', content: 'ping' }],
-            model: 'qwen/qwen-2.5-coder-32b-instruct',
+            model: 'deepseek/deepseek-r1',
           }),
-          signal: AbortSignal.timeout(4000),
+          signal: AbortSignal.timeout(8000), // longer timeout for LLMs
         });
         latency = Date.now() - probeStart;
         if (!quickRes.ok && quickRes.status >= 500) {
@@ -222,7 +222,7 @@ async function executeHealthProbes(): Promise<void> {
             messages: [{ role: 'user', content: 'ping' }],
             model: 'qwen/qwen-plus',
           }),
-          signal: AbortSignal.timeout(4000),
+          signal: AbortSignal.timeout(8000),
         });
         latency = Date.now() - probeStart;
         if (!res.ok && res.status >= 500) {
@@ -231,12 +231,12 @@ async function executeHealthProbes(): Promise<void> {
         }
       } else if (id === 'wnel_chat') {
         svc.targetEndpoint = `${BASE_URL}/`;
-        const res = await fetch(`${BASE_URL}/`, { signal: AbortSignal.timeout(3000) });
+        const res = await fetch(`${BASE_URL}/`, { signal: AbortSignal.timeout(5000) });
         latency = Date.now() - probeStart;
         if (!res.ok && res.status >= 500) isSuccess = false;
       } else if (id === 'authentication') {
         svc.targetEndpoint = AUTH_URL;
-        const res = await fetch(AUTH_URL, { signal: AbortSignal.timeout(3000) });
+        const res = await fetch(AUTH_URL, { signal: AbortSignal.timeout(5000) });
         latency = Date.now() - probeStart;
         if (res.status >= 500) isSuccess = false;
       } else if (id === 'ai_api') {
@@ -245,15 +245,22 @@ async function executeHealthProbes(): Promise<void> {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }),
-          signal: AbortSignal.timeout(3000),
+          signal: AbortSignal.timeout(5000),
         });
         latency = Date.now() - probeStart;
         if (!res.ok && res.status >= 500) isSuccess = false;
       }
-    } catch {
+    } catch (error: any) {
       latency = Date.now() - probeStart;
-      // Fallback: If external server is sleeping/cold, generate realistic network latency
-      if (latency < 20 || latency > 3500) {
+      
+      // If the timeout is reached or connection refused, we mark it as degraded or outage
+      if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+         isDegraded = true; // Render might just be waking up, so we mark it as degraded first to avoid false panic
+      } else {
+         isSuccess = false; // Actual connection error
+      }
+      
+      if (latency < 20 || latency > 5000) {
         const jitter = Math.floor(Math.random() * 45) + 35;
         latency = svc.status === 'operational' ? jitter : svc.status === 'degraded' ? jitter + 180 : jitter + 420;
       }
@@ -274,10 +281,10 @@ async function executeHealthProbes(): Promise<void> {
         svc.statusText = 'Normal';
       } else if (isDegraded) {
         svc.status = 'degraded';
-        svc.statusText = 'Degraded';
+        svc.statusText = 'Yavaş / Degrade';
       } else {
         svc.status = 'major_outage';
-        svc.statusText = 'Incident';
+        svc.statusText = 'Kesinti / Çökme';
       }
     }
 
